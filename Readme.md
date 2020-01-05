@@ -10,9 +10,9 @@ Everything is perfect except there's a 1 to 2 second latency between sensing and
 
 ## Demos
 
-Full Project Demo：https://youtu.be/Qy7nXLi_5VM
-SG90 Rotating Test：https://youtu.be/r-zx7K57Q54
-Person Detection Test：https://youtu.be/nfIdwzGbYoM
+Full Project Demo：https://youtu.be/Qy7nXLi_5VM  
+SG90 Rotating Test：https://youtu.be/r-zx7K57Q54  
+Person Detection Test：https://youtu.be/nfIdwzGbYoM  
 
 ## Items Used
 
