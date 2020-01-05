@@ -8,6 +8,12 @@ You may see my demo vedio in the YouTube link. Remember it can only detect a who
 
 Everything is perfect except there's a 1 to 2 second latency between sensing and rotating, it is caused by the weak computing power of raspbarry pi. I've try my best to optimize the process of detecting and vedio output, the lagging in the begining is 6s. Hope you can enjoy my progress.
 
+## Demos
+
+Full Project Demo：https://youtu.be/Qy7nXLi_5VM
+SG90 Rotating Test：https://youtu.be/r-zx7K57Q54
+Person Detection Test：https://youtu.be/nfIdwzGbYoM
+
 ## Items Used
 
 Here's the items you need, if you want to take a try on this project.
