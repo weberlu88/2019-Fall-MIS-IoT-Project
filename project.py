@@ -1,17 +1,105 @@
+# IoT final project: *The Welcome Robot*
+
+> `NCU MIS IoT Project` `Powered by Weber Lu, Junior.`
+
+Have you ever seen Robot *Peper made in Japan? **Welcome Robot** has some similarities with Peper, it can detect a passerby, rotate itself and make itself face  the passerby. The core component of Welcome Robot is a webcam, as a result, you can see the vision on the screen that Welcome Robot actually captures.
+
+We apply machine learning about person-detection to the detecting technique, GPIO PWM to control robot rotating. 
+
+You may see my demo vedio in the YouTube link. Remember it can only detect a whole person with standing position, I can't tell the effect on a sitting person. Here's how it  works: If you move to the left, Welcome Robot will turn itself to the right side (your left side) to follow you, and vice versa. 
+
+Everything is perfect except there's a 1 to 2 second latency between sensing and rotating, it is caused by the weak computing power of raspbarry pi. I've tried my best to optimize the process of detecting and vedio output, the lagging in the begining is 6s. Hope you can enjoy my progress.
+
+## Demos
+
+* Full Project Demo：https://youtu.be/Qy7nXLi_5VM
+* SG90 Rotating Test：https://youtu.be/r-zx7K57Q54
+* Person Detection Test：https://youtu.be/nfIdwzGbYoM
+
+## Items Used
+
+Here're the items you need, if you want to take a try on this project.
+
+* Raspbian Pi 3 x1
+* SG90 Servomotor x1
+* Cable camera/USB webcam x1
+* Camera support x1
+* Dupont lines x3
+* FFC, Flexible flat cable x1
+* T-cobbler x1
+* Bread board x1
+
+There're some more items I hope to add on the robot. However, for lack of time, I fail to achieve it. If given another opportunity in the future,  I'll be eager to propose them to make the robot much better.
+
+* PIR Infrared PIR Motion Sensor x1
+* Bluetooth speaker x1
+
+## Component Make-Up
+
+Final make-up of the robot.
+![](https://i.imgur.com/vTSewy0.jpg)
+
+Connect flexible flat cable to GPIO, webcam to USB port.
+![](https://i.imgur.com/IGMcwej.jpg)
+
+Plug the one coming off the red wire into pin #2 (5v power), 
+the one coming off of the brown into pin #6 (ground), 
+and the one coming out of the yellow wire into pin #12(o) (pwm0 for output).
+![](https://i.imgur.com/pIpd3wD.jpg)
+
+Use your imagination to build up the SG90.
+![](https://i.imgur.com/jxVUeu6.jpg)
+
+
+## Raspberry Pi Invironment Setting
+
+If you start with a new Raspberry Pi, follow my manual.pdf steps, and then go on cv2 package setup:
+```
+sudo apt-get install python-opencv
+```
+See more at https://docs.opencv.org/3.4.1/d2/de6/tutorial_py_setup_in_ubuntu.html
+
+## Start Programming
+
+We devide the program into 2 parts: SG90 Servomotor Controlling section and Person-detection section. If you have time, you could add PIR sensing or audio output methods.
+
+* ### SG90 Servomotor Controlling section
+
+> References:
+> 1) https://blog.everlearn.tw/%E7%95%B6-python-%E9%81%87%E4%B8%8A-raspberry-pi/raspberry-pi-3-mobel-b-%E5%88%A9%E7%94%A8%E7%A1%AC%E9%AB%94-pwm-%E6%8E%A7%E5%88%B6%E4%BC%BA%E6%9C%8D%E9%A6%AC%E9%81%94
+> 2) https://www.instructables.com/id/Servo-Motor-Control-With-Raspberry-Pi/
+
+Here we use PWM to control SG90, we will write a function `setAngle(int:angle)` to set SG90's current angle with input value.
+
+This function is the basic method of the program, then we will biuld
+* `servomotor_right(int:step, int:cur_angle)`
+* `servomotor_left(int:step, int:cur_angle)`
+
+These 2 functions act as an interface to control the servomotor.
+
+**Step1. Import the packages we need.**
+```python
 # import the necessary packages
 import RPi.GPIO as GPIO
 from time import sleep
-import numpy as np
-import cv2
+```
 
+**Step2. Set up the pins and PWM frequency.**
+```pythoF
 # setup PWM tools
 cur_angle = 0
 PWM_FREQ = 50
 GPIO.setmode(GPIO.BOARD)
 GPIO.setup(12, GPIO.OUT)
 pwm=GPIO.PWM(12, PWM_FREQ) #setup PWM on pin #12 at 50Hz
+```
 
-''' PWM SG90 methods '''
+**Step3.** Now we can create the `setAngle` method. It can accept a 0~180 input `int` , and set its duty cycle by this formula `duty = (0.05 * PWM_FREQ) + (0.19 * PWM_FREQ * angle / 180)`, finally the raspberry pi will charge a current for 0.3s with the computed duty cycle.
+
+The derivation of the formula is in the `References` part on the top.
+![](https://i.imgur.com/IORPH2c.png)
+
+```python
 def setAngle(angle):
     duty = ""
     if angle > 180 or angle < 0:
@@ -26,42 +114,83 @@ def setAngle(angle):
         GPIO.output(12, False)
         pwm.ChangeDutyCycle(0)
     return duty
+```
 
-# set to 0°
-def servomotor_set0(cur_angle):
-    cur_angle = 0
-    setAngle(cur_angle)
-    return cur_angle
-
-# set to 90°
-def servomotor_set90(cur_angle):
-    cur_angle = 90
-    setAngle(cur_angle)
-    return cur_angle
-
-# turn rigth x°
-def servomotor_right(step, cur_angle):
-    cur_angle -= step
-    dc = setAngle(cur_angle)
-    return cur_angle
-
-# turn rigth 15°
-def servomotor_right15(cur_angle):
-    step = 15
-    cur_angle += step
-    dc = setAngle(cur_angle)
-    return cur_angle
-
+**Step4.** Write the" turn left" and "turn right" methods with `setAngle()`. We use `cur_angle`globle variable to store the current angle of SG90, so remember to return the current angle.
+```python
 # turn left x°
 def servomotor_left(step, cur_angle):
     cur_angle += step
     dc = setAngle(cur_angle)
     return cur_angle
+```
 
-''' HOG person detection's methods '''
+* ### Real-time person detection section
+
+> References:
+> 1) https://thedatafrog.com/en/human-detection-video/
+> 2) https://github.com/opencv/open_model_zoo
+
+With the intel NCS stick provided by our course, we can take advantage of intel's per-trended model. However, I can't figure out the usage of the model without documentary. There's only a sample with face-detection.
+
+I supposed to use [person-detection-retail-0002](http://docs.openvinotoolkit.org/latest/person-detection-retail-0002.html) initailly but failed to complete. If you know how to call the model correctly and apply to real-time detection, please let me know. Thanks.
+
+**Step1. Access the camera/webcam.**
+
+This step is the same as [reference 1](https://thedatafrog.com/en/human-detection-video/). Make sure you can stream with camera.
+```python
+import numpy as np
+import cv2
+
+cv2.startWindowThread()
+cap = cv2.VideoCapture(0)
+
+while(True):
+    # reading the frame
+    ret, frame = cap.read()
+    # displaying the frame
+    cv2.imshow('frame',frame)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        # breaking the loop if the user types q
+        # note that the video window must be highlighted!
+        break
+
+cap.release()
+cv2.destroyAllWindows()
+# the following is necessary on the mac,
+# maybe not on other platforms:
+cv2.waitKey(1)
+```
+
+**Step2. People detecting via HOG.**
+
+OpenCV features an implementation for a very fast human detection method, called HOG (Histograms of Oriented Gradients).
+
+This method is trained to detect pedestrians who are  mostly standing up, and fully visible. So do not expect it to work well in other cases.
+
+Here I encountered a problem: while testing on my laptop, the output process is smooth and lagless, whereas, on rapsbian, I had a 5 seconds latency, so I made some adjustments to the codes:
+```python
+# resizing for faster detection
+frame = cv2.resize(frame, (400, 300))
+```
+```python
+# sleep a while before capturing next frame
+sleep(0.1)
+```
+
+Hopefully the latency decreased to 1~2 seconds. It's more acceptable. You may view the final edition in the last chapter, or fork it from my Git.
+
+**Step3. Determine which person to follow**
+
+The HOG's `detectMultiScale`function can return an array of detected person's coordinates. By logic, our robot could only follow a single person, and keep tracing the person very well.
+
+Here I compute the area each detection pocesses. The bigger the area is, the closer the person is to the robot. The nearest (biggest box) is the one that my robot should track. 
+
+By choosing to follow the biggest box, we can also avoid some mis-detection on small objects such as T-shirts.
+```python
 # tell which detection is human, by comparing the area of box.
-# @return (idx, loc). idx=-1 means no detection.  
-# @return (idx, loc). loc means xAvg locaton of the box.   
+# @return (idx, loc). idx=-1 means no detection.
+# @return (idx, loc). loc means xAvg locaton of the box.
 def getBiggestBox(boxes):
     biggest_box_idx = -1
     biggest_area = 0
@@ -79,9 +208,16 @@ def getBiggestBox(boxes):
         i += 1
 
     return biggest_box_idx, loc
+```
 
-# track the person, move 0°/1° at one call, it takes 0.3s time.sleep()
-# @return cur_angle after movong
+After making sure whom to follow, we can go on to `track` method, which turn 1° each call. The frame width is `0~400`, and we set x loction `150~250` as `safe zone` (middle). 
+
+While the person to follow is in the safe zone, the robot will not rotate itself. And if the person is out of the safe zone, this method will call `servomotor_right` or `servomotor_left`to rotate the camera.
+![](https://i.imgur.com/pRKVEJk.png)
+
+```python
+# track the person, move 0°/1° at one call, it takes 0.3s time.sleep()for PWM
+# @return cur_angle after moving
 def track(loc, cur_angle):
     # frame=0~400, middle=200+-50=150~250
     safe_zone = [150, 250]
@@ -93,81 +229,8 @@ def track(loc, cur_angle):
     elif loc < safe_zone[0]: # loc<150 turn left > angle++ let loc++
         print("left")
         return servomotor_left(1, cur_angle)
-        
+```
 
-''' main function '''
-def main( cur_angle ):
+## Final program
 
-    # start it with 0 duty cycle so it doesn't set any angles on startup
-    # set the camera to 90 degree
-    pwm.start(0) 
-    cur_angle = servomotor_set90(cur_angle)
-
-    # initialize the HOG descriptor/person detector
-    hog = cv2.HOGDescriptor()
-    hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
-
-    cv2.startWindowThread()
-
-    # open webcam video stream
-    cap = cv2.VideoCapture(0)
-
-    while(True):
-        # Capture frame-by-frame
-        ret, frame = cap.read()
-
-        # resizing for faster detection
-        frame = cv2.resize(frame, (400, 300))
-        # using a greyscale picture, also for faster detection
-        gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-
-        # detect people in the image
-        # returns the bounding boxes for the detected objects
-        boxes, weights = hog.detectMultiScale(frame, winStride=(8,8) )
-        boxes = np.array([[x, y, x + w, y + h] for (x, y, w, h) in boxes])
-
-        for (xA, yA, xB, yB) in boxes:
-        
-            # display the detected boxes in the colour picture
-            cv2.rectangle(frame, (xA, yA), (xB, yB),
-                            (0, 255, 0), 2)
-            xAvg = (xA + xB)/2
-            yAvg = (yA + yB)/2
-            locText = str(xA) + ' ,' + str(yA)
-            #print("detect xloc: "+str(xAvg))
-            cv2.putText(frame, locText, (xA, yA), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (165, 42, 42), 1, cv2.LINE_AA)
-        ''' end for '''
-
-        ''' important '''
-        # biggest box > human
-        idx, loc = getBiggestBox(boxes)
-
-        # track the detected person by rotating SG90 
-        if idx >= 0 and loc != 0:
-            cur_angle = track(loc, cur_angle)
-            print("person xloc: "+str(loc))
-            #pass
-
-        # Display the resulting frame
-        cv2.imshow('frame',frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-        
-        sleep(0.1)
-
-    ''' end while '''
-
-    # When everything done, release the capture
-    cap.release()
-    # finally, close the window
-    cv2.destroyAllWindows()
-    cv2.waitKey(1)
-
-    # At the end of your code, make sure to write
-    pwm.stop()
-    GPIO.cleanup()
-    pass
-
-''' execute main function '''
-main( cur_angle )
-
+See them at `project.py`. Thank you for your reading.
