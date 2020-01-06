@@ -2,7 +2,7 @@
 
 > `NCU MIS IoT Project` `Powered by Weber Lu, Junior.`
 
-Have you ever seen Robot *Peper made in Japan? **Welcome Robot** has some similarities with Peper, it can detect a passerby, rotate itself and make itself face  the passerby. The core component of Welcome Robot is a webcam, as a result, you can see the vision on the screen that Welcome Robot actually captures.
+Have you ever seen Robot *Peper* made in Japan? **Welcome Robot** has some similarities with Peper, it can detect a passerby, rotate itself and make itself face  the passerby. The core component of Welcome Robot is a webcam, as a result, you can see the vision on the screen that Welcome Robot actually captures.
 
 We apply machine learning about person-detection to the detecting technique, GPIO PWM to control robot rotating. 
 
