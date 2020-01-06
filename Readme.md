@@ -168,11 +168,11 @@ OpenCV features an implementation for a very fast human detection method, called
 This method is trained to detect pedestrians who are  mostly standing up, and fully visible. So do not expect it to work well in other cases.
 
 Here I encountered a problem: while testing on my laptop, the output process is smooth and lagless, whereas, on rapsbian, I had a 5 seconds latency, so I made some adjustments to the codes:
-```python=
+```python
 # resizing for faster detection
 frame = cv2.resize(frame, (400, 300))
 ```
-```python=
+```python
 # sleep a while before capturing next frame
 sleep(0.1)
 ```
